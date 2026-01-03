@@ -1,43 +1,89 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
   Image,
   StyleSheet,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { searchRestaurants, getImageUrl } from '../services/api';
+import axios from 'axios';
 
-const QUICK_SEARCHES = [
-  'romantic italian',
-  'trendy brunch',
-  'cozy date spot',
-  'late night eats',
-  'authentic ramen',
-  'rooftop dining',
+const API_URL = 'https://web-production-c67df.up.railway.app';
+
+const FOOD_CATEGORIES = [
+  { id: 'all', name: 'All', emoji: '🍽️' },
+  { id: 'italian', name: 'Italian', emoji: '🍝' },
+  { id: 'asian', name: 'Asian', emoji: '🍜' },
+  { id: 'mexican', name: 'Mexican', emoji: '🌮' },
+  { id: 'brunch', name: 'Brunch', emoji: '🥞' },
+  { id: 'romantic', name: 'Romantic', emoji: '❤️' },
+];
+
+const QUICK_VIBES = [
+  { name: 'Romantic', query: 'romantic intimate cozy date' },
+  { name: 'Trendy', query: 'trendy hip instagram worthy' },
+  { name: 'Casual', query: 'casual relaxed laid back' },
+  { name: 'Upscale', query: 'upscale fancy elegant' },
 ];
 
 export default function SearchScreen({ navigation, route }) {
   const [query, setQuery] = useState(route.params?.initialQuery || '');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [topRated, setTopRated] = useState([]);
+  const [loadingTopRated, setLoadingTopRated] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [vibeSections, setVibeSections] = useState([]);
 
-  // Auto-search if there's an initial query
-  React.useEffect(() => {
-    if (route.params?.initialQuery) {
-      handleSearch();
+  useEffect(() => {
+    loadTopRated();
+    loadVibeSections();
+  }, []);
+
+  const loadTopRated = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/top-rated`, { timeout: 30000 });
+      setTopRated(response.data.restaurants || []);
+    } catch (error) {
+      console.error('Failed to load top rated:', error);
+    } finally {
+      setLoadingTopRated(false);
     }
-  }, [route.params?.initialQuery]);
+  };
 
-  const handleSearch = async () => {
-    if (!query.trim()) return;
+  const loadVibeSections = async () => {
+    try {
+      const sections = await Promise.all(
+        QUICK_VIBES.map(async (vibe) => {
+          try {
+            const data = await searchRestaurants(vibe.query);
+            return {
+              ...vibe,
+              restaurants: (data.results || []).slice(0, 10),
+            };
+          } catch (error) {
+            console.error(`Failed to load ${vibe.name}:`, error);
+            return { ...vibe, restaurants: [] };
+          }
+        })
+      );
+      setVibeSections(sections);
+    } catch (error) {
+      console.error('Failed to load vibe sections:', error);
+    }
+  };
+
+  const handleSearch = async (searchQuery) => {
+    const queryToUse = searchQuery || query;
+    if (!queryToUse.trim()) return;
 
     setLoading(true);
     try {
-      const data = await searchRestaurants(query);
+      const data = await searchRestaurants(queryToUse);
       setResults(data.results || []);
     } catch (error) {
       alert('Search failed. Please try again.');
@@ -46,228 +92,370 @@ export default function SearchScreen({ navigation, route }) {
     }
   };
 
-  const renderRestaurant = ({ item }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => navigation.navigate('Details', { restaurant: item })}
-    >
-      {item.image_filename && (
-        <Image
-          source={{ uri: getImageUrl(item.image_filename) }}
-          style={styles.image}
-        />
-      )}
-      <View style={styles.cardContent}>
-        <Text style={styles.name}>{item.name}</Text>
-        {item.vibes && item.vibes.length > 0 && (
-          <View style={styles.vibesContainer}>
-            {item.vibes.slice(0, 3).map((vibe, index) => (
-              <View key={index} style={styles.vibeTag}>
-                <Text style={styles.vibeText}>
-                  {vibe.name} ({vibe.count})
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-        {item.similarity != null && (
-          <Text style={styles.score}>
-            Match: {(item.similarity * 100).toFixed(1)}%
-          </Text>
-        )}
+  const clearSearch = () => {
+    setQuery('');
+    setResults([]);
+  };
+
+  // Auto-search if there's an initial query
+  useEffect(() => {
+    if (route.params?.initialQuery) {
+      setQuery(route.params.initialQuery);
+      handleSearch(route.params.initialQuery);
+    }
+  }, [route.params?.initialQuery]);
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>VibeCheck</Text>
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Search restaurants"
+            value={query}
+            onChangeText={setQuery}
+            onSubmitEditing={() => handleSearch()}
+          />
+        </View>
+        <ActivityIndicator size="large" color="#000000" style={styles.loader} />
       </View>
-    </TouchableOpacity>
-  );
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>NYC VibeCheck</Text>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <Text style={styles.title}>VibeCheck</Text>
 
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Search for a vibe (e.g., 'cozy romantic italian')"
+          placeholder="Search restaurants"
           value={query}
           onChangeText={setQuery}
-          onSubmitEditing={handleSearch}
+          onSubmitEditing={() => handleSearch()}
         />
-        <TouchableOpacity style={styles.button} onPress={handleSearch}>
-          <Text style={styles.buttonText}>Search</Text>
-        </TouchableOpacity>
+        {query.length > 0 && (
+          <TouchableOpacity style={styles.clearButton} onPress={clearSearch}>
+            <Text style={styles.clearButtonText}>✕</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
-      ) : (
-        <FlatList
-          data={results}
-          renderItem={renderRestaurant}
-          keyExtractor={(item, index) => `${item.id}-${index}`}
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={
-            !query ? (
-              <View style={styles.suggestionsContainer}>
-                <Text style={styles.suggestionsTitle}>Quick Searches</Text>
-                <View style={styles.chipsContainer}>
-                  {QUICK_SEARCHES.map((search, index) => (
+      {results.length === 0 && (
+        <>
+          {/* Food Categories */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.categoriesScroll}
+            contentContainerStyle={styles.categoriesContainer}
+          >
+            {FOOD_CATEGORIES.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.categoryChip,
+                  selectedCategory === category.id && styles.categoryChipActive,
+                ]}
+                onPress={() => setSelectedCategory(category.id)}
+              >
+                <Text style={styles.categoryEmoji}>{category.emoji}</Text>
+                <Text style={[
+                  styles.categoryText,
+                  selectedCategory === category.id && styles.categoryTextActive,
+                ]}>{category.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* Highest Rated Section */}
+          {!loadingTopRated && topRated.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Highest Rated</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.horizontalScroll}
+              >
+                {topRated.slice(0, 10).map((restaurant) => (
+                  <TouchableOpacity
+                    key={restaurant.id}
+                    style={styles.horizontalCard}
+                    onPress={() => navigation.navigate('Details', { restaurant })}
+                  >
+                    {restaurant.photo_filename && (
+                      <Image
+                        source={{ uri: getImageUrl(restaurant.photo_filename) }}
+                        style={styles.horizontalCardImage}
+                      />
+                    )}
+                    <View style={styles.horizontalCardContent}>
+                      <Text style={styles.horizontalCardName} numberOfLines={1}>
+                        {restaurant.name}
+                      </Text>
+                      <Text style={styles.horizontalCardRating}>⭐ {restaurant.rating}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Vibe Sections */}
+          {vibeSections.map((section) => (
+            section.restaurants.length > 0 && (
+              <View key={section.name} style={styles.section}>
+                <Text style={styles.sectionTitle}>{section.name}</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalScroll}
+                >
+                  {section.restaurants.map((restaurant) => (
                     <TouchableOpacity
-                      key={index}
-                      style={styles.chip}
-                      onPress={() => {
-                        setQuery(search);
-                        setTimeout(() => handleSearch(), 100);
-                      }}
+                      key={restaurant.id}
+                      style={styles.horizontalCard}
+                      onPress={() => navigation.navigate('Details', { restaurant })}
                     >
-                      <Text style={styles.chipText}>{search}</Text>
+                      {restaurant.image_filename && (
+                        <Image
+                          source={{ uri: getImageUrl(restaurant.image_filename) }}
+                          style={styles.horizontalCardImage}
+                        />
+                      )}
+                      <View style={styles.horizontalCardContent}>
+                        <Text style={styles.horizontalCardName} numberOfLines={1}>
+                          {restaurant.name}
+                        </Text>
+                        <Text style={styles.horizontalCardRating}>⭐ {restaurant.rating}</Text>
+                      </View>
                     </TouchableOpacity>
                   ))}
-                </View>
+                </ScrollView>
               </View>
-            ) : (
-              <Text style={styles.emptyText}>No results found</Text>
             )
-          }
-        />
+          ))}
+        </>
       )}
-    </View>
+
+      {results.length > 0 && (
+        <View style={styles.resultsContainer}>
+          <View style={styles.resultsHeader}>
+            <Text style={styles.resultsTitle}>{results.length} Results</Text>
+          </View>
+          {results.map((item, index) => (
+            <TouchableOpacity
+              key={`${item.id}-${index}`}
+              style={styles.card}
+              onPress={() => navigation.navigate('Details', { restaurant: item })}
+            >
+              {item.image_filename && (
+                <Image
+                  source={{ uri: getImageUrl(item.image_filename) }}
+                  style={styles.image}
+                />
+              )}
+              <View style={styles.cardContent}>
+                <Text style={styles.name}>{item.name}</Text>
+                {item.vibes && item.vibes.length > 0 && (
+                  <View style={styles.vibesContainer}>
+                    {item.vibes.slice(0, 3).map((vibe, idx) => (
+                      <View key={idx} style={styles.vibeTag}>
+                        <Text style={styles.vibeText}>{vibe.name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                {item.rating && (
+                  <Text style={styles.score}>⭐ {item.rating}</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
-    paddingTop: 50,
+    backgroundColor: '#FFFFFF',
   },
   title: {
     fontSize: 28,
     fontWeight: '700',
-    textAlign: 'left',
-    paddingHorizontal: 20,
-    marginBottom: 8,
-    color: '#1A1A1A',
+    paddingHorizontal: 16,
+    paddingTop: 60,
+    marginBottom: 16,
+    color: '#000000',
     letterSpacing: -0.5,
   },
   searchContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-    marginTop: 16,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    position: 'relative',
   },
   input: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: '#EEEEEE',
+    borderRadius: 50,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     fontSize: 16,
-    color: '#1A1A1A',
+    color: '#000000',
     borderWidth: 0,
   },
-  button: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    paddingVertical: 16,
-    marginTop: 12,
+  clearButton: {
+    position: 'absolute',
+    right: 28,
+    top: 12,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#CCCCCC',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  buttonText: {
-    color: 'white',
+  clearButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '600',
-    fontSize: 16,
-    letterSpacing: 0.3,
   },
-  loader: {
-    marginTop: 50,
+  categoriesScroll: {
+    marginBottom: 20,
   },
-  list: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+  categoriesContainer: {
+    paddingHorizontal: 16,
   },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    marginBottom: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  image: {
-    width: '100%',
-    height: 220,
-    backgroundColor: '#E8E8E8',
-  },
-  cardContent: {
-    padding: 18,
-  },
-  name: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 12,
-    color: '#1A1A1A',
-    letterSpacing: -0.3,
-  },
-  vibesContainer: {
+  categoryChip: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 12,
-  },
-  vibeTag: {
+    alignItems: 'center',
     backgroundColor: '#F5F5F5',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    marginRight: 8,
-    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 25,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
-  vibeText: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '600',
+  categoryChipActive: {
+    backgroundColor: '#000000',
+    borderColor: '#000000',
   },
-  score: {
-    fontSize: 15,
-    color: '#1A1A1A',
-    fontWeight: '700',
-  },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 50,
-    fontSize: 16,
-    color: '#999',
-  },
-  suggestionsContainer: {
-    paddingTop: 8,
-  },
-  suggestionsTitle: {
+  categoryEmoji: {
     fontSize: 18,
+    marginRight: 6,
+  },
+  categoryText: {
+    color: '#000000',
+    fontSize: 14,
     fontWeight: '600',
+  },
+  categoryTextActive: {
+    color: '#FFFFFF',
+  },
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    paddingHorizontal: 16,
     marginBottom: 16,
-    color: '#666',
-    letterSpacing: -0.2,
+    color: '#000000',
+    letterSpacing: -0.5,
   },
-  chipsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+  horizontalScroll: {
+    paddingHorizontal: 16,
   },
-  chip: {
-    backgroundColor: 'white',
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 16,
+  horizontalCard: {
+    width: 280,
+    marginRight: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 1.5,
-    borderColor: '#F0F0F0',
+    elevation: 3,
   },
-  chipText: {
-    color: '#1A1A1A',
-    fontSize: 14,
+  horizontalCardImage: {
+    width: '100%',
+    height: 180,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    backgroundColor: '#F0F0F0',
+  },
+  horizontalCardContent: {
+    padding: 12,
+  },
+  horizontalCardName: {
+    fontSize: 16,
     fontWeight: '600',
-    letterSpacing: 0.2,
+    color: '#000000',
+    marginBottom: 4,
+  },
+  horizontalCardRating: {
+    fontSize: 14,
+    color: '#666666',
+  },
+  resultsContainer: {
+    paddingTop: 8,
+  },
+  resultsHeader: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  resultsTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  card: {
+    marginBottom: 24,
+    paddingHorizontal: 16,
+  },
+  image: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: '#F0F0F0',
+    marginBottom: 12,
+  },
+  cardContent: {
+    paddingHorizontal: 4,
+  },
+  name: {
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 6,
+    color: '#000000',
+  },
+  vibesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 6,
+  },
+  vibeTag: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 6,
+    marginBottom: 4,
+  },
+  vibeText: {
+    fontSize: 11,
+    color: '#666666',
+    fontWeight: '500',
+  },
+  score: {
+    fontSize: 14,
+    color: '#666666',
+  },
+  loader: {
+    marginTop: 100,
   },
 });

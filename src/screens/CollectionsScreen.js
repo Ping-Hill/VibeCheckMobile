@@ -7,9 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import axios from 'axios';
-
-const API_URL = 'https://web-production-c67df.up.railway.app';
+import { searchRestaurants } from '../services/api';
 
 const COLLECTIONS = [
   { id: 'romantic', name: 'Best Date Spots', query: 'romantic intimate cozy' },
@@ -27,6 +25,7 @@ const COLLECTIONS = [
 export default function CollectionsScreen({ navigation }) {
   const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadCollections();
@@ -34,17 +33,15 @@ export default function CollectionsScreen({ navigation }) {
 
   const loadCollections = async () => {
     try {
+      setError(null);
       // Load top 5 restaurants for each collection
       const collectionData = await Promise.all(
         COLLECTIONS.map(async (collection) => {
           try {
-            const response = await axios.post(`${API_URL}/api/search`, {
-              query: collection.query,
-              k: 5,
-            });
+            const data = await searchRestaurants(collection.query, 'text');
             return {
               ...collection,
-              restaurants: response.data.results || [],
+              restaurants: (data.results || []).slice(0, 5),
             };
           } catch (error) {
             console.error(`Failed to load ${collection.name}:`, error);
@@ -55,6 +52,7 @@ export default function CollectionsScreen({ navigation }) {
       setCollections(collectionData);
     } catch (error) {
       console.error('Failed to load collections:', error);
+      setError('Unable to connect to server. Check your internet connection.');
     } finally {
       setLoading(false);
     }
@@ -110,6 +108,18 @@ export default function CollectionsScreen({ navigation }) {
     return (
       <View style={styles.loader}>
         <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading collections...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.loader}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={loadCollections}>
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -130,88 +140,114 @@ export default function CollectionsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#FFFFFF',
   },
   loader: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    padding: 20,
-    color: '#333',
+    fontSize: 32,
+    fontWeight: '700',
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 20,
+    color: '#000000',
+    letterSpacing: -0.8,
   },
   list: {
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
+    paddingBottom: 24,
   },
   collectionCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 20,
-    elevation: 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    marginHorizontal: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   collectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-    paddingBottom: 10,
+    marginBottom: 16,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  collectionEmoji: {
-    fontSize: 24,
-    marginRight: 10,
+    borderBottomColor: '#F0F0F0',
   },
   collectionName: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: '700',
+    color: '#000000',
+    letterSpacing: -0.3,
   },
   restaurantItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   restaurantRank: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#007AFF',
-    width: 30,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000000',
+    width: 28,
   },
   restaurantInfo: {
     flex: 1,
   },
   restaurantName: {
     fontSize: 16,
-    color: '#333',
-    marginBottom: 4,
+    fontWeight: '500',
+    color: '#000000',
+    marginBottom: 2,
   },
   restaurantRating: {
     fontSize: 14,
-    color: '#666',
+    color: '#666666',
   },
   viewAllButton: {
-    marginTop: 10,
-    paddingVertical: 10,
+    marginTop: 12,
+    paddingTop: 12,
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: '#F0F0F0',
   },
   viewAllText: {
-    fontSize: 16,
-    color: '#007AFF',
+    fontSize: 15,
+    color: '#000000',
     fontWeight: '600',
   },
   emptyText: {
     textAlign: 'center',
-    color: '#999',
+    color: '#999999',
+    fontSize: 15,
     paddingVertical: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#666666',
+    fontSize: 15,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 17,
+    textAlign: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 40,
+  },
+  retryButton: {
+    backgroundColor: '#000000',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  retryText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
   },
 });

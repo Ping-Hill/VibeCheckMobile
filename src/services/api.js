@@ -9,6 +9,8 @@ export const searchRestaurants = async (query, searchType = 'text') => {
       query,
       search_type: searchType,
       k: 50, // Number of results
+    }, {
+      timeout: 30000, // 30 second timeout
     });
     return response.data;
   } catch (error) {
@@ -19,7 +21,9 @@ export const searchRestaurants = async (query, searchType = 'text') => {
 
 export const getRestaurantDetails = async (restaurantId) => {
   try {
-    const response = await axios.get(`${API_URL}/api/restaurant/${restaurantId}`);
+    const response = await axios.get(`${API_URL}/api/restaurant/${restaurantId}`, {
+      timeout: 30000, // 30 second timeout
+    });
     return response.data;
   } catch (error) {
     console.error('Restaurant details error:', error);
