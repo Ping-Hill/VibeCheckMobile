@@ -172,8 +172,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   horizontalCard: {
-    width: 280,
-    marginRight: 16,
+    width: 200,
+    marginRight: 12,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     shadowColor: '#000',
@@ -184,22 +184,22 @@ const styles = StyleSheet.create({
   },
   horizontalCardImage: {
     width: '100%',
-    height: 180,
+    height: 140,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
     backgroundColor: '#F0F0F0',
   },
   horizontalCardContent: {
-    padding: 12,
+    padding: 10,
   },
   horizontalCardName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#000000',
     marginBottom: 4,
   },
   horizontalCardRating: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666666',
   },
   loadingText: {

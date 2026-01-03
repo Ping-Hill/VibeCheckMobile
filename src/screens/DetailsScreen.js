@@ -165,9 +165,9 @@ export default function DetailsScreen({ route }) {
           </TouchableOpacity>
         </View>
 
-        {restaurantData.vibes && restaurantData.vibes.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.label}>Vibes</Text>
+        <View style={styles.section}>
+          <Text style={styles.label}>Vibes</Text>
+          {restaurantData.vibes && restaurantData.vibes.length > 0 ? (
             <View style={styles.vibesContainer}>
               {restaurantData.vibes.map((vibe, index) => (
                 <View key={index} style={styles.vibeTag}>
@@ -177,8 +177,10 @@ export default function DetailsScreen({ route }) {
                 </View>
               ))}
             </View>
-          </View>
-        )}
+          ) : (
+            <Text style={styles.value}>No vibes analyzed yet for this restaurant</Text>
+          )}
+        </View>
 
         {restaurantData.place_id && (
           <TouchableOpacity style={styles.button} onPress={openGooglePlace}>
