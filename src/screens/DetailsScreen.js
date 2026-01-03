@@ -165,18 +165,20 @@ export default function DetailsScreen({ route }) {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Vibes</Text>
-          <View style={styles.vibesContainer}>
-            {restaurantData.vibes && restaurantData.vibes.map((vibe, index) => (
-              <View key={index} style={styles.vibeTag}>
-                <Text style={styles.vibeText}>
-                  {vibe.name} ({vibe.count})
-                </Text>
-              </View>
-            ))}
+        {restaurantData.vibes && restaurantData.vibes.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.label}>Vibes</Text>
+            <View style={styles.vibesContainer}>
+              {restaurantData.vibes.map((vibe, index) => (
+                <View key={index} style={styles.vibeTag}>
+                  <Text style={styles.vibeText}>
+                    {vibe.name} ({vibe.count})
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         {restaurantData.place_id && (
           <TouchableOpacity style={styles.button} onPress={openGooglePlace}>
@@ -184,10 +186,14 @@ export default function DetailsScreen({ route }) {
           </TouchableOpacity>
         )}
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Address</Text>
-          <Text style={styles.value}>{restaurantData.address}</Text>
-        </View>
+        {restaurantData.address && (
+          <View style={styles.section}>
+            <Text style={styles.label}>Address</Text>
+            <TouchableOpacity onPress={openMaps}>
+              <Text style={[styles.value, styles.link]}>{restaurantData.address}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.label}>Rating</Text>
@@ -324,7 +330,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   link: {
-    color: '#1A1A1A',
+    color: '#007AFF',
     textDecorationLine: 'underline',
   },
   reviewText: {

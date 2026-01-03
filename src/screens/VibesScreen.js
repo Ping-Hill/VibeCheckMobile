@@ -65,8 +65,13 @@ export default function VibesScreen({ navigation }) {
       {vibes.map((vibe) => (
         vibe.restaurants && vibe.restaurants.length > 0 && (
           <View key={vibe.name} style={styles.section}>
-            <Text style={styles.sectionTitle}>{vibe.name}</Text>
-            <Text style={styles.restaurantCount}>{vibe.count} restaurants</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Search', {
+              screen: 'SearchHome',
+              params: { initialQuery: vibe.name.toLowerCase() }
+            })}>
+              <Text style={styles.sectionTitle}>{vibe.name}</Text>
+              <Text style={styles.restaurantCount}>{vibe.count} restaurants · Tap to see all</Text>
+            </TouchableOpacity>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}

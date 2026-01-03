@@ -175,7 +175,7 @@ export default function SearchScreen({ navigation, route }) {
                 onPress={() => {
                   setSelectedCategory(category.id);
                   if (category.query) {
-                    setQuery(category.query);
+                    // Don't update the search bar text, just search
                     handleSearch(category.query);
                   } else {
                     // "All" selected - reset to home view

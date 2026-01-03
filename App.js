@@ -27,7 +27,7 @@ function SearchStack() {
       <Stack.Screen
         name="SearchHome"
         component={SearchScreen}
-        options={{ headerShown: false }}
+        options={{ headerShown: false, title: 'Home' }}
       />
       <Stack.Screen
         name="Details"

@@ -86,7 +86,13 @@ export default function CollectionsScreen({ navigation }) {
       {collections.map((collection) => (
         collection.restaurants.length > 0 && (
           <View key={collection.id} style={styles.section}>
-            <Text style={styles.sectionTitle}>{collection.name}</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Search', {
+              screen: 'SearchHome',
+              params: { initialQuery: collection.query }
+            })}>
+              <Text style={styles.sectionTitle}>{collection.name}</Text>
+              <Text style={styles.restaurantCount}>Tap to see all</Text>
+            </TouchableOpacity>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -152,9 +158,15 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 4,
     color: '#000000',
     letterSpacing: -0.5,
+  },
+  restaurantCount: {
+    fontSize: 14,
+    color: '#666666',
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   horizontalScroll: {
     paddingHorizontal: 16,
