@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
+  Image,
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { searchRestaurants } from '../services/api';
+import { searchRestaurants, getImageUrl } from '../services/api';
 
 const COLLECTIONS = [
   { id: 'romantic', name: 'Best Date Spots', query: 'romantic intimate cozy' },
@@ -34,14 +35,14 @@ export default function CollectionsScreen({ navigation }) {
   const loadCollections = async () => {
     try {
       setError(null);
-      // Load top 5 restaurants for each collection
+      // Load top 10 restaurants for each collection
       const collectionData = await Promise.all(
         COLLECTIONS.map(async (collection) => {
           try {
             const data = await searchRestaurants(collection.query, 'text');
             return {
               ...collection,
-              restaurants: (data.results || []).slice(0, 5),
+              restaurants: (data.results || []).slice(0, 10),
             };
           } catch (error) {
             console.error(`Failed to load ${collection.name}:`, error);
@@ -58,51 +59,6 @@ export default function CollectionsScreen({ navigation }) {
     }
   };
 
-  const viewFullCollection = (collection) => {
-    navigation.navigate('Search', {
-      screen: 'SearchHome',
-      params: { initialQuery: collection.query },
-    });
-  };
-
-  const renderCollection = ({ item }) => (
-    <View style={styles.collectionCard}>
-      <View style={styles.collectionHeader}>
-        <Text style={styles.collectionName}>{item.name}</Text>
-      </View>
-
-      {item.restaurants.length > 0 ? (
-        <>
-          {item.restaurants.map((restaurant, index) => (
-            <TouchableOpacity
-              key={restaurant.id}
-              style={styles.restaurantItem}
-              onPress={() =>
-                navigation.navigate('Search', {
-                  screen: 'Details',
-                  params: { restaurant },
-                })
-              }
-            >
-              <Text style={styles.restaurantRank}>{index + 1}</Text>
-              <View style={styles.restaurantInfo}>
-                <Text style={styles.restaurantName}>{restaurant.name}</Text>
-                <Text style={styles.restaurantRating}>⭐ {restaurant.rating}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-          <TouchableOpacity
-            style={styles.viewAllButton}
-            onPress={() => viewFullCollection(item)}
-          >
-            <Text style={styles.viewAllText}>View All →</Text>
-          </TouchableOpacity>
-        </>
-      ) : (
-        <Text style={styles.emptyText}>Loading...</Text>
-      )}
-    </View>
-  );
 
   if (loading) {
     return (
@@ -125,15 +81,47 @@ export default function CollectionsScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <Text style={styles.title}>Curated Collections</Text>
-      <FlatList
-        data={collections}
-        renderItem={renderCollection}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-      />
-    </View>
+      {collections.map((collection) => (
+        collection.restaurants.length > 0 && (
+          <View key={collection.id} style={styles.section}>
+            <Text style={styles.sectionTitle}>{collection.name}</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScroll}
+            >
+              {collection.restaurants.map((restaurant) => (
+                <TouchableOpacity
+                  key={restaurant.id}
+                  style={styles.horizontalCard}
+                  onPress={() =>
+                    navigation.navigate('Search', {
+                      screen: 'Details',
+                      params: { restaurant },
+                    })
+                  }
+                >
+                  {restaurant.image_filename && (
+                    <Image
+                      source={{ uri: getImageUrl(restaurant.image_filename) }}
+                      style={styles.horizontalCardImage}
+                    />
+                  )}
+                  <View style={styles.horizontalCardContent}>
+                    <Text style={styles.horizontalCardName} numberOfLines={1}>
+                      {restaurant.name}
+                    </Text>
+                    <Text style={styles.horizontalCardRating}>⭐ {restaurant.rating}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )
+      ))}
+    </ScrollView>
   );
 }
 
@@ -149,83 +137,58 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 20,
     color: '#000000',
-    letterSpacing: -0.8,
+    letterSpacing: -0.5,
   },
-  list: {
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: '700',
     paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  collectionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
     marginBottom: 16,
-    marginHorizontal: 8,
+    color: '#000000',
+    letterSpacing: -0.5,
+  },
+  horizontalScroll: {
+    paddingHorizontal: 16,
+  },
+  horizontalCard: {
+    width: 280,
+    marginRight: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
   },
-  collectionHeader: {
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+  horizontalCardImage: {
+    width: '100%',
+    height: 180,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    backgroundColor: '#F0F0F0',
   },
-  collectionName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000000',
-    letterSpacing: -0.3,
+  horizontalCardContent: {
+    padding: 12,
   },
-  restaurantItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  restaurantRank: {
+  horizontalCardName: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#000000',
-    width: 28,
+    marginBottom: 4,
   },
-  restaurantInfo: {
-    flex: 1,
-  },
-  restaurantName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000000',
-    marginBottom: 2,
-  },
-  restaurantRating: {
+  horizontalCardRating: {
     fontSize: 14,
     color: '#666666',
-  },
-  viewAllButton: {
-    marginTop: 12,
-    paddingTop: 12,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  viewAllText: {
-    fontSize: 15,
-    color: '#000000',
-    fontWeight: '600',
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#999999',
-    fontSize: 15,
-    paddingVertical: 20,
   },
   loadingText: {
     marginTop: 12,

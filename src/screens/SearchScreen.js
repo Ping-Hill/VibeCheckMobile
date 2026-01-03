@@ -14,13 +14,26 @@ import axios from 'axios';
 
 const API_URL = 'https://web-production-c67df.up.railway.app';
 
+// Helper function to calculate distance between two coordinates
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 const FOOD_CATEGORIES = [
-  { id: 'all', name: 'All', emoji: '🍽️' },
-  { id: 'italian', name: 'Italian', emoji: '🍝' },
-  { id: 'asian', name: 'Asian', emoji: '🍜' },
-  { id: 'mexican', name: 'Mexican', emoji: '🌮' },
-  { id: 'brunch', name: 'Brunch', emoji: '🥞' },
-  { id: 'romantic', name: 'Romantic', emoji: '❤️' },
+  { id: 'all', name: 'All', query: '' },
+  { id: 'italian', name: 'Italian', query: 'italian pasta pizza' },
+  { id: 'asian', name: 'Asian', query: 'japanese chinese thai korean ramen sushi' },
+  { id: 'mexican', name: 'Mexican', query: 'mexican tacos' },
+  { id: 'brunch', name: 'Brunch', query: 'brunch breakfast' },
+  { id: 'romantic', name: 'Romantic', query: 'romantic intimate date' },
 ];
 
 const QUICK_VIBES = [
@@ -38,6 +51,7 @@ export default function SearchScreen({ navigation, route }) {
   const [loadingTopRated, setLoadingTopRated] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [vibeSections, setVibeSections] = useState([]);
+  const [userLocation, setUserLocation] = useState({ lat: 40.7128, lon: -74.0060 }); // Default to NYC center
 
   useEffect(() => {
     loadTopRated();
@@ -158,9 +172,18 @@ export default function SearchScreen({ navigation, route }) {
                   styles.categoryChip,
                   selectedCategory === category.id && styles.categoryChipActive,
                 ]}
-                onPress={() => setSelectedCategory(category.id)}
+                onPress={() => {
+                  setSelectedCategory(category.id);
+                  if (category.query) {
+                    setQuery(category.query);
+                    handleSearch(category.query);
+                  } else {
+                    // "All" selected - reset to home view
+                    setQuery('');
+                    setResults([]);
+                  }
+                }}
               >
-                <Text style={styles.categoryEmoji}>{category.emoji}</Text>
                 <Text style={[
                   styles.categoryText,
                   selectedCategory === category.id && styles.categoryTextActive,
@@ -194,7 +217,19 @@ export default function SearchScreen({ navigation, route }) {
                       <Text style={styles.horizontalCardName} numberOfLines={1}>
                         {restaurant.name}
                       </Text>
-                      <Text style={styles.horizontalCardRating}>⭐ {restaurant.rating}</Text>
+                      <View style={styles.horizontalCardFooter}>
+                        <Text style={styles.horizontalCardRating}>⭐ {restaurant.rating}</Text>
+                        {restaurant.latitude && restaurant.longitude && (
+                          <Text style={styles.horizontalCardDistance}>
+                            {calculateDistance(
+                              userLocation.lat,
+                              userLocation.lon,
+                              restaurant.latitude,
+                              restaurant.longitude
+                            ).toFixed(1)} mi
+                          </Text>
+                        )}
+                      </View>
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -228,7 +263,19 @@ export default function SearchScreen({ navigation, route }) {
                         <Text style={styles.horizontalCardName} numberOfLines={1}>
                           {restaurant.name}
                         </Text>
-                        <Text style={styles.horizontalCardRating}>⭐ {restaurant.rating}</Text>
+                        <View style={styles.horizontalCardFooter}>
+                          <Text style={styles.horizontalCardRating}>⭐ {restaurant.rating}</Text>
+                          {restaurant.latitude && restaurant.longitude && (
+                            <Text style={styles.horizontalCardDistance}>
+                              {calculateDistance(
+                                userLocation.lat,
+                                userLocation.lon,
+                                restaurant.latitude,
+                                restaurant.longitude
+                              ).toFixed(1)} mi
+                            </Text>
+                          )}
+                        </View>
                       </View>
                     </TouchableOpacity>
                   ))}
@@ -330,8 +377,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#F5F5F5',
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -343,10 +388,6 @@ const styles = StyleSheet.create({
   categoryChipActive: {
     backgroundColor: '#000000',
     borderColor: '#000000',
-  },
-  categoryEmoji: {
-    fontSize: 18,
-    marginRight: 6,
   },
   categoryText: {
     color: '#000000',
@@ -395,11 +436,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#000000',
-    marginBottom: 4,
+    marginBottom: 6,
+  },
+  horizontalCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   horizontalCardRating: {
     fontSize: 14,
     color: '#666666',
+  },
+  horizontalCardDistance: {
+    fontSize: 13,
+    color: '#999999',
   },
   resultsContainer: {
     paddingTop: 8,

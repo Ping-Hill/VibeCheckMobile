@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
+  Image,
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
 import axios from 'axios';
+import { getImageUrl } from '../services/api';
 
 const API_URL = 'https://web-production-c67df.up.railway.app';
 
@@ -36,46 +38,6 @@ export default function VibesScreen({ navigation }) {
     }
   };
 
-  const handleVibePress = (vibeName) => {
-    // Navigate back to search screen with this vibe as query
-    navigation.navigate('Search', {
-      screen: 'SearchHome',
-      params: { initialQuery: vibeName }
-    });
-  };
-
-  const renderVibe = ({ item }) => (
-    <View style={styles.vibeCard}>
-      <TouchableOpacity onPress={() => handleVibePress(item.name)}>
-        <Text style={styles.vibeName}>{item.name}</Text>
-        <Text style={styles.restaurantCount}>
-          {item.count} restaurants
-        </Text>
-      </TouchableOpacity>
-
-      {item.restaurants && item.restaurants.length > 0 && (
-        <View style={styles.restaurantList}>
-          {item.restaurants.map((restaurant, index) => (
-            <TouchableOpacity
-              key={restaurant.id}
-              style={styles.restaurantItem}
-              onPress={() => navigation.navigate('Search', {
-                screen: 'Details',
-                params: { restaurant: { id: restaurant.id, name: restaurant.name, rating: restaurant.rating } }
-              })}
-            >
-              <Text style={styles.restaurantName}>
-                {index + 1}. {restaurant.name}
-              </Text>
-              <Text style={styles.restaurantRating}>
-                ⭐ {restaurant.rating}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </View>
-  );
 
   if (loading) {
     return (
@@ -98,15 +60,48 @@ export default function VibesScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <Text style={styles.title}>Popular Vibes in NYC</Text>
-      <FlatList
-        data={vibes}
-        renderItem={renderVibe}
-        keyExtractor={(item) => item.name}
-        contentContainerStyle={styles.list}
-      />
-    </View>
+      {vibes.map((vibe) => (
+        vibe.restaurants && vibe.restaurants.length > 0 && (
+          <View key={vibe.name} style={styles.section}>
+            <Text style={styles.sectionTitle}>{vibe.name}</Text>
+            <Text style={styles.restaurantCount}>{vibe.count} restaurants</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScroll}
+            >
+              {vibe.restaurants.map((restaurant) => (
+                <TouchableOpacity
+                  key={restaurant.id}
+                  style={styles.horizontalCard}
+                  onPress={() =>
+                    navigation.navigate('Search', {
+                      screen: 'Details',
+                      params: { restaurant },
+                    })
+                  }
+                >
+                  {restaurant.photo_filename && (
+                    <Image
+                      source={{ uri: getImageUrl(restaurant.photo_filename) }}
+                      style={styles.horizontalCardImage}
+                    />
+                  )}
+                  <View style={styles.horizontalCardContent}>
+                    <Text style={styles.horizontalCardName} numberOfLines={1}>
+                      {restaurant.name}
+                    </Text>
+                    <Text style={styles.horizontalCardRating}>⭐ {restaurant.rating}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )
+      ))}
+    </ScrollView>
   );
 }
 
@@ -122,64 +117,64 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 20,
     color: '#000000',
-    letterSpacing: -0.8,
+    letterSpacing: -0.5,
   },
-  list: {
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: '700',
     paddingHorizontal: 16,
-    paddingBottom: 24,
+    marginBottom: 4,
+    color: '#000000',
+    letterSpacing: -0.5,
   },
-  vibeCard: {
+  restaurantCount: {
+    fontSize: 14,
+    color: '#666666',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  horizontalScroll: {
+    paddingHorizontal: 16,
+  },
+  horizontalCard: {
+    width: 280,
+    marginRight: 16,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    marginHorizontal: 8,
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
   },
-  vibeName: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 6,
-    color: '#000000',
-    letterSpacing: -0.3,
+  horizontalCardImage: {
+    width: '100%',
+    height: 180,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    backgroundColor: '#F0F0F0',
   },
-  restaurantCount: {
+  horizontalCardContent: {
+    padding: 12,
+  },
+  horizontalCardName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  horizontalCardRating: {
     fontSize: 14,
     color: '#666666',
-    marginBottom: 16,
-  },
-  restaurantList: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  restaurantItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  restaurantName: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#000000',
-    flex: 1,
-  },
-  restaurantRating: {
-    fontSize: 14,
-    color: '#666666',
-    marginLeft: 12,
   },
   loadingText: {
     marginTop: 12,
